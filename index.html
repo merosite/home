@@ -1023,6 +1023,19 @@
 
     <!-- Context Menu -->
     <div class="context-menu" id="contextMenu">
+        <button class="context-menu-item" id="contextOpenLink">
+            <i class="fas fa-external-link-alt"></i>
+            <span>Open Link</span>
+        </button>
+        <button class="context-menu-item" id="contextOpenNewTab">
+            <i class="fas fa-plus-square"></i>
+            <span>Open in new tab</span>
+        </button>
+        <button class="context-menu-item" id="contextOpenNewWindow">
+            <i class="fas fa-external-link-square-alt"></i>
+            <span>Open in new window</span>
+        </button>
+        <div class="context-menu-divider"></div>
         <button class="context-menu-item" id="contextEdit">
             <i class="fas fa-edit"></i>
             <span>Edit</span>
@@ -1030,10 +1043,6 @@
         <button class="context-menu-item" id="contextDelete">
             <i class="fas fa-trash"></i>
             <span>Delete</span>
-        </button>
-        <button class="context-menu-item" id="contextOpenNewTab">
-            <i class="fas fa-external-link-alt"></i>
-            <span>Open in new tab</span>
         </button>
     </div>
 
@@ -1162,9 +1171,11 @@
         const openAllFolderItems = document.getElementById('openAllFolderItems');
         const editFolderBtn = document.getElementById('editFolderBtn');
         const contextMenu = document.getElementById('contextMenu');
+        const contextOpenLink = document.getElementById('contextOpenLink');
         const contextEdit = document.getElementById('contextEdit');
         const contextDelete = document.getElementById('contextDelete');
         const contextOpenNewTab = document.getElementById('contextOpenNewTab');
+        const contextOpenNewWindow = document.getElementById('contextOpenNewWindow');
 
         // Initialize the Chrome homepage
         function initChromeHomepage() {
@@ -1183,6 +1194,16 @@
         // Open link in same tab
         function openLink(url) {
             window.location.href = url;
+        }
+
+        // Open link in new tab
+        function openInNewTab(url) {
+            window.open(url, '_blank');
+        }
+
+        // Open link in new window
+        function openInNewWindow(url) {
+            window.open(url, '_blank', 'width=800,height=600,left=100,top=100');
         }
 
         // Render Bookmark Bar
@@ -1314,7 +1335,7 @@
                     
                     // Open remaining in new tabs
                     for (let i = 1; i < items.length; i++) {
-                        window.open(items[i].url, '_blank');
+                        openInNewTab(items[i].url);
                     }
                 }
                 folderDropdown.classList.remove('active');
@@ -1357,8 +1378,8 @@
             contextMenuPosition = { x: event.clientX, y: event.clientY };
             
             // Position context menu
-            contextMenu.style.left = contextMenuPosition.x + 'px';
-            contextMenu.style.top = contextMenuPosition.y + 'px';
+            contextMenu.style.left = Math.min(contextMenuPosition.x, window.innerWidth - 200) + 'px';
+            contextMenu.style.top = Math.min(contextMenuPosition.y, window.innerHeight - 300) + 'px';
             contextMenu.classList.add('active');
             
             // Store target for context menu actions
@@ -1367,13 +1388,17 @@
             
             // Update context menu options based on item type
             if (type === 'folder') {
+                contextOpenLink.style.display = 'none';
+                contextOpenNewTab.style.display = 'none';
+                contextOpenNewWindow.style.display = 'none';
                 contextEdit.querySelector('span').textContent = 'Edit folder';
                 contextDelete.querySelector('span').textContent = 'Delete folder';
-                contextOpenNewTab.style.display = 'none';
             } else {
+                contextOpenLink.style.display = 'flex';
+                contextOpenNewTab.style.display = 'flex';
+                contextOpenNewWindow.style.display = 'flex';
                 contextEdit.querySelector('span').textContent = 'Edit bookmark';
                 contextDelete.querySelector('span').textContent = 'Delete bookmark';
-                contextOpenNewTab.style.display = 'flex';
             }
             
             // Close context menu when clicking outside
@@ -1750,6 +1775,33 @@
             });
             
             // Context menu actions
+            contextOpenLink.addEventListener('click', () => {
+                if (contextMenuTarget && contextMenuTarget.url) {
+                    openLink(contextMenuTarget.url);
+                    contextMenu.classList.remove('active');
+                    contextMenuTarget = null;
+                    contextMenuType = null;
+                }
+            });
+            
+            contextOpenNewTab.addEventListener('click', () => {
+                if (contextMenuTarget && contextMenuTarget.url) {
+                    openInNewTab(contextMenuTarget.url);
+                    contextMenu.classList.remove('active');
+                    contextMenuTarget = null;
+                    contextMenuType = null;
+                }
+            });
+            
+            contextOpenNewWindow.addEventListener('click', () => {
+                if (contextMenuTarget && contextMenuTarget.url) {
+                    openInNewWindow(contextMenuTarget.url);
+                    contextMenu.classList.remove('active');
+                    contextMenuTarget = null;
+                    contextMenuType = null;
+                }
+            });
+            
             contextEdit.addEventListener('click', () => {
                 if (contextMenuTarget && contextMenuType) {
                     if (contextMenuType === 'folder') {
@@ -1792,15 +1844,6 @@
                         contextMenuTarget = null;
                         contextMenuType = null;
                     }
-                }
-            });
-            
-            contextOpenNewTab.addEventListener('click', () => {
-                if (contextMenuTarget && contextMenuTarget.url) {
-                    window.open(contextMenuTarget.url, '_blank');
-                    contextMenu.classList.remove('active');
-                    contextMenuTarget = null;
-                    contextMenuType = null;
                 }
             });
             
