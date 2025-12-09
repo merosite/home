@@ -412,6 +412,12 @@
             color: var(--chrome-text-secondary);
         }
 
+        .context-menu-divider {
+            height: 1px;
+            background: var(--chrome-border);
+            margin: 4px 0;
+        }
+
         /* Folder Dropdown */
         .folder-dropdown {
             position: absolute;
@@ -997,6 +1003,55 @@
         </div>
     </div>
 
+    <!-- Add Bookmark to Folder Modal -->
+    <div class="modal-overlay" id="addToFolderModalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="fas fa-folder-plus"></i>
+                    <span>Add Bookmark to Folder</span>
+                </h3>
+            </div>
+            <div class="modal-body">
+                <form id="addToFolderForm">
+                    <div class="form-group">
+                        <label for="addToFolderName" class="form-label">
+                            <i class="fas fa-font"></i>
+                            <span>Name</span>
+                        </label>
+                        <input type="text" id="addToFolderName" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="addToFolderUrl" class="form-label">
+                            <i class="fas fa-link"></i>
+                            <span>URL</span>
+                        </label>
+                        <input type="url" id="addToFolderUrl" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="selectFolder" class="form-label">
+                            <i class="fas fa-folder"></i>
+                            <span>Select Folder</span>
+                        </label>
+                        <select id="selectFolder" class="form-select" required>
+                            <option value="">Select a folder</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="addToFolderCancelBtn">
+                    <i class="fas fa-times"></i>
+                    Cancel
+                </button>
+                <button type="button" class="btn btn-primary" id="addToFolderSaveBtn">
+                    <i class="fas fa-check"></i>
+                    Add to Folder
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Folder Dropdown -->
     <div class="folder-dropdown" id="folderDropdown">
         <div class="folder-dropdown-header">
@@ -1010,6 +1065,10 @@
             <!-- Folder items will be dynamically added here -->
         </div>
         <div class="folder-dropdown-footer">
+            <button class="dropdown-action-btn" id="addBookmarkToFolderBtn">
+                <i class="fas fa-plus"></i>
+                Add Bookmark
+            </button>
             <button class="dropdown-action-btn" id="openAllFolderItems">
                 <i class="fas fa-external-link-alt"></i>
                 Open All
@@ -1143,21 +1202,28 @@
         let contextMenuTarget = null;
         let contextMenuType = null;
         let contextMenuPosition = { x: 0, y: 0 };
+        let selectedFolderForAdding = null;
 
         // DOM Elements
         const bookmarkBarContainer = document.getElementById('bookmarkBarContainer');
         const speedDialGrid = document.getElementById('speedDialGrid');
         const modalOverlay = document.getElementById('modalOverlay');
         const folderModalOverlay = document.getElementById('folderModalOverlay');
+        const addToFolderModalOverlay = document.getElementById('addToFolderModalOverlay');
         const modalTitleText = document.getElementById('modalTitleText');
         const bookmarkNameInput = document.getElementById('bookmarkName');
         const bookmarkUrlInput = document.getElementById('bookmarkUrl');
         const folderNameInput = document.getElementById('folderName');
         const folderColorSelect = document.getElementById('folderColor');
+        const addToFolderNameInput = document.getElementById('addToFolderName');
+        const addToFolderUrlInput = document.getElementById('addToFolderUrl');
+        const selectFolderDropdown = document.getElementById('selectFolder');
         const saveBtn = document.getElementById('saveBtn');
         const cancelBtn = document.getElementById('cancelBtn');
         const folderSaveBtn = document.getElementById('folderSaveBtn');
         const folderCancelBtn = document.getElementById('folderCancelBtn');
+        const addToFolderSaveBtn = document.getElementById('addToFolderSaveBtn');
+        const addToFolderCancelBtn = document.getElementById('addToFolderCancelBtn');
         const searchContainer = document.getElementById('searchContainer');
         const searchInput = document.getElementById('searchInput');
         const addBookmarkBarBtn = document.getElementById('addBookmarkBarBtn');
@@ -1170,6 +1236,7 @@
         const folderDropdownItems = document.getElementById('folderDropdownItems');
         const openAllFolderItems = document.getElementById('openAllFolderItems');
         const editFolderBtn = document.getElementById('editFolderBtn');
+        const addBookmarkToFolderBtn = document.getElementById('addBookmarkToFolderBtn');
         const contextMenu = document.getElementById('contextMenu');
         const contextOpenLink = document.getElementById('contextOpenLink');
         const contextEdit = document.getElementById('contextEdit');
@@ -1204,6 +1271,34 @@
         // Open link in new window
         function openInNewWindow(url) {
             window.open(url, '_blank', 'width=800,height=600,left=100,top=100');
+        }
+
+        // Populate folder dropdown in modal
+        function populateFolderDropdown() {
+            const bookmarkFolderSelect = document.getElementById('bookmarkFolder');
+            const selectFolder = document.getElementById('selectFolder');
+            
+            // Clear existing options (keep first option)
+            while (bookmarkFolderSelect.options.length > 1) {
+                bookmarkFolderSelect.remove(1);
+            }
+            while (selectFolder.options.length > 1) {
+                selectFolder.remove(1);
+            }
+            
+            // Add folder options
+            const folders = bookmarkBarItems.filter(item => item.type === 'folder');
+            folders.forEach(folder => {
+                const option1 = document.createElement('option');
+                option1.value = folder.id;
+                option1.textContent = folder.name;
+                bookmarkFolderSelect.appendChild(option1);
+                
+                const option2 = document.createElement('option');
+                option2.value = folder.id;
+                option2.textContent = folder.name;
+                selectFolder.appendChild(option2);
+            });
         }
 
         // Render Bookmark Bar
@@ -1284,7 +1379,7 @@
             
             // Position dropdown
             const rect = event.currentTarget.getBoundingClientRect();
-            folderDropdown.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
+            folderDropdown.style.left = Math.min(rect.left, window.innerWidth - 280) + 'px';
             folderDropdown.style.top = rect.bottom + 4 + 'px';
             
             // Update dropdown content
@@ -1292,6 +1387,9 @@
             folderDropdownIcon.innerHTML = `<i class="fas fa-folder"></i>`;
             folderDropdownTitle.textContent = folder.name;
             folderDropdownCount.textContent = `${folder.items ? folder.items.length : 0} items`;
+            
+            // Store selected folder for adding bookmarks
+            selectedFolderForAdding = folder;
             
             // Populate dropdown items
             folderDropdownItems.innerHTML = '';
@@ -1325,6 +1423,13 @@
                 `;
                 folderDropdownItems.appendChild(emptyMessage);
             }
+            
+            // Set up "Add Bookmark" button
+            addBookmarkToFolderBtn.onclick = () => {
+                openAddToFolderModal(folder);
+                folderDropdown.classList.remove('active');
+                activeFolderDropdown = null;
+            };
             
             // Set up open all button
             openAllFolderItems.onclick = () => {
@@ -1467,11 +1572,12 @@
             bookmarkNameInput.value = item ? item.name : '';
             bookmarkUrlInput.value = item ? item.url : 'https://';
             
-            // Hide folder group for speed dials
-            if (type === 'speedDial') {
-                document.getElementById('folderGroup').style.display = 'none';
-            } else {
+            // Show folder dropdown only for bookmark bar items (not speed dials)
+            if (type === 'bookmark') {
                 document.getElementById('folderGroup').style.display = 'block';
+                populateFolderDropdown();
+            } else {
+                document.getElementById('folderGroup').style.display = 'none';
             }
             
             editingItem = { ...item, type };
@@ -1498,10 +1604,31 @@
             }, 100);
         }
 
+        // Open "Add to Folder" modal
+        function openAddToFolderModal(folder = null) {
+            addToFolderNameInput.value = '';
+            addToFolderUrlInput.value = 'https://';
+            
+            // Populate folder dropdown
+            populateFolderDropdown();
+            
+            // If a specific folder is provided, select it
+            if (folder) {
+                selectFolderDropdown.value = folder.id;
+            }
+            
+            addToFolderModalOverlay.classList.add('active');
+            
+            setTimeout(() => {
+                addToFolderNameInput.focus();
+            }, 100);
+        }
+
         // Save bookmark/speed dial
         function saveItem() {
             const name = bookmarkNameInput.value.trim();
             const url = bookmarkUrlInput.value.trim();
+            const folderId = document.getElementById('bookmarkFolder').value;
             
             if (!name) {
                 alert('Please enter a name');
@@ -1562,13 +1689,27 @@
                     }
                 } else {
                     // Add new bookmark to bookmark bar
-                    bookmarkBarItems.push({
+                    const newBookmark = {
                         id: nextId.bookmarkBar++,
                         name,
                         url,
                         type: 'bookmark',
                         icon: getFaviconForUrl(url)
-                    });
+                    };
+                    
+                    // If folder is selected, add to that folder
+                    if (folderId) {
+                        const folderIndex = bookmarkBarItems.findIndex(item => item.id == folderId);
+                        if (folderIndex !== -1 && bookmarkBarItems[folderIndex].type === 'folder') {
+                            if (!bookmarkBarItems[folderIndex].items) {
+                                bookmarkBarItems[folderIndex].items = [];
+                            }
+                            bookmarkBarItems[folderIndex].items.push(newBookmark);
+                        }
+                    } else {
+                        // Add to bookmark bar directly
+                        bookmarkBarItems.push(newBookmark);
+                    }
                 }
                 renderBookmarkBar();
                 saveToLocalStorage(); // Save to localStorage
@@ -1608,6 +1749,61 @@
             renderBookmarkBar();
             saveToLocalStorage(); // Save to localStorage
             closeFolderModal();
+        }
+
+        // Save bookmark to folder
+        function saveBookmarkToFolder() {
+            const name = addToFolderNameInput.value.trim();
+            const url = addToFolderUrlInput.value.trim();
+            const folderId = selectFolderDropdown.value;
+            
+            if (!name) {
+                alert('Please enter a name');
+                return;
+            }
+            
+            if (!url) {
+                alert('Please enter a URL');
+                return;
+            }
+            
+            // Validate URL
+            try {
+                new URL(url);
+            } catch {
+                alert('Please enter a valid URL');
+                return;
+            }
+            
+            if (!folderId) {
+                alert('Please select a folder');
+                return;
+            }
+            
+            // Find the folder
+            const folderIndex = bookmarkBarItems.findIndex(item => item.id == folderId);
+            if (folderIndex === -1 || bookmarkBarItems[folderIndex].type !== 'folder') {
+                alert('Selected folder not found');
+                return;
+            }
+            
+            // Add bookmark to folder
+            const newBookmark = {
+                id: nextId.bookmarkBar++,
+                name,
+                url,
+                icon: getFaviconForUrl(url)
+            };
+            
+            if (!bookmarkBarItems[folderIndex].items) {
+                bookmarkBarItems[folderIndex].items = [];
+            }
+            
+            bookmarkBarItems[folderIndex].items.push(newBookmark);
+            
+            renderBookmarkBar();
+            saveToLocalStorage(); // Save to localStorage
+            closeAddToFolderModal();
         }
 
         // Get favicon for URL
@@ -1675,6 +1871,12 @@
             document.getElementById('folderForm').reset();
         }
 
+        // Close "Add to Folder" modal
+        function closeAddToFolderModal() {
+            addToFolderModalOverlay.classList.remove('active');
+            document.getElementById('addToFolderForm').reset();
+        }
+
         // Toggle theme
         function toggleTheme() {
             const isDark = getComputedStyle(document.documentElement).getPropertyValue('--chrome-bg') === '#0f0f0f';
@@ -1730,6 +1932,13 @@
             folderCancelBtn.addEventListener('click', closeFolderModal);
             folderModalOverlay.addEventListener('click', (e) => {
                 if (e.target === folderModalOverlay) closeFolderModal();
+            });
+            
+            // Add to Folder modal events
+            addToFolderSaveBtn.addEventListener('click', saveBookmarkToFolder);
+            addToFolderCancelBtn.addEventListener('click', closeAddToFolderModal);
+            addToFolderModalOverlay.addEventListener('click', (e) => {
+                if (e.target === addToFolderModalOverlay) closeAddToFolderModal();
             });
             
             // Search box events
@@ -1836,7 +2045,31 @@
                             renderSpeedDials();
                             saveToLocalStorage(); // Save to localStorage
                         } else {
-                            bookmarkBarItems = bookmarkBarItems.filter(item => item.id !== contextMenuTarget.id);
+                            // Check if bookmark is in a folder or directly in bookmark bar
+                            let found = false;
+                            for (let i = 0; i < bookmarkBarItems.length; i++) {
+                                if (bookmarkBarItems[i].id === contextMenuTarget.id) {
+                                    // Bookmark is directly in bookmark bar
+                                    bookmarkBarItems.splice(i, 1);
+                                    found = true;
+                                    break;
+                                } else if (bookmarkBarItems[i].type === 'folder' && bookmarkBarItems[i].items) {
+                                    // Check if bookmark is in folder items
+                                    const folder = bookmarkBarItems[i];
+                                    const itemIndex = folder.items.findIndex(item => item.id === contextMenuTarget.id);
+                                    if (itemIndex !== -1) {
+                                        folder.items.splice(itemIndex, 1);
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            if (!found) {
+                                // Fallback: filter from bookmarkBarItems
+                                bookmarkBarItems = bookmarkBarItems.filter(item => item.id !== contextMenuTarget.id);
+                            }
+                            
                             renderBookmarkBar();
                             saveToLocalStorage(); // Save to localStorage
                         }
@@ -1865,6 +2098,7 @@
                 if (e.key === 'Escape') {
                     if (modalOverlay.classList.contains('active')) closeModal();
                     if (folderModalOverlay.classList.contains('active')) closeFolderModal();
+                    if (addToFolderModalOverlay.classList.contains('active')) closeAddToFolderModal();
                     if (folderDropdown.classList.contains('active')) {
                         folderDropdown.classList.remove('active');
                         activeFolderDropdown = null;
